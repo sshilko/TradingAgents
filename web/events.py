@@ -84,6 +84,20 @@ class EventEmitter:
         await self.emit("complete", result)
         self._completed = True
     
+    async def emit_agent_status(self, agent_name: str, status: str, message: str = ""):
+        """Emit an agent status update event.
+        
+        Args:
+            agent_name: Name of the agent (e.g., "Market Analyst", "Trader")
+            status: Status string - "pending", "in_progress", "completed", "error"
+            message: Optional status message
+        """
+        await self.emit("agent_status", {
+            "agent": agent_name,
+            "status": status,
+            "message": message
+        })
+    
     async def event_generator(self) -> AsyncGenerator[str, None]:
         """Generate SSE events for streaming to client."""
         # Send initial connection event

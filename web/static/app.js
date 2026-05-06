@@ -7,7 +7,42 @@ const AppState = {
     activeStreams: new Map(),
     currentTaskId: null,
     isRunning: false,
-    taskHistory: []
+    taskHistory: [],
+    agentStatuses: {}  // Track agent statuses: { "Market Analyst": "completed", ... }
+};
+
+// Agent team definitions for UI rendering
+const AGENT_TEAMS = {
+    "Analyst Team": [
+        { name: "Market Analyst", icon: "\ud83d\udcc8", color: "#00d4ff" },
+        { name: "Social Analyst", icon: "\ud83d\udcac", color: "#00ff88" },
+        { name: "News Analyst", icon: "\ud83d\udce3", color: "#ffaa00" },
+        { name: "Fundamentals Analyst", icon: "\ud83d\udcca", color: "#ff88aa" }
+    ],
+    "Research Team": [
+        { name: "Bull Researcher", icon: "\ud83d\udfe2", color: "#00cc66" },
+        { name: "Bear Researcher", icon: "\ud83d\udd34", color: "#ff4466" },
+        { name: "Research Manager", icon: "\u2699\ufe0f", color: "#00d4ff" }
+    ],
+    "Trading Team": [
+        { name: "Trader", icon: "\ud83d\udcbc", color: "#aa88ff" }
+    ],
+    "Risk Management": [
+        { name: "Aggressive Analyst", icon: "\u26a1", color: "#ff8800" },
+        { name: "Neutral Analyst", icon: "\u26aa", color: "#88ccff" },
+        { name: "Conservative Analyst", icon: "\ud83d\udee1\ufe0f", color: "#88aacc" }
+    ],
+    "Portfolio Management": [
+        { name: "Portfolio Manager", icon: "\ud83c\udfaf", color: "#00ff88" }
+    ]
+};
+
+// Status display configuration
+const STATUS_CONFIG = {
+    "pending": { label: "Waiting", color: "#6a6a8a", icon: "\u23f3" },
+    "in_progress": { label: "Running", color: "#00d4ff", icon: "<span class='status-spinner'></span>" },
+    "completed": { label: "Completed", color: "#00cc66", icon: "\u2713" },
+    "error": { label: "Error", color: "#ff4466", icon: "\u2717" }
 };
 
 // ===== Initialization =====
@@ -242,6 +277,16 @@ function connectToStream(taskId) {
         }
     });
     
+    // Handle agent status events
+    eventSource.addEventListener('agent_status', function(event) {
+        try {
+            const data = JSON.parse(event.data);
+            handleAgentStatusEvent(data);
+        } catch (err) {
+            console.warn('Failed to parse agent_status event:', err);
+        }
+    });
+    
     // Handle completion events
     eventSource.addEventListener('complete', function(event) {
         try {
@@ -447,6 +492,94 @@ function showError(message) {
     document.getElementById('statusTitle').textContent = 'Error';
     document.getElementById('statusMessage').textContent = message;
     updateProgress(0);
+}
+
+// ===== Agent Status Handling =====
+function handleAgentStatusEvent(data) {
+    const { agent, status, message } = data;
+    if (!agent || !status) return;
+    
+    // Track status
+    AppState.agentStatuses[agent] = status;
+    
+    // Show panel on first status update
+    const panel = document.getElementById('agentStatusPanel');
+    if (panel && panel.style.display === 'none') {
+        panel.style.display = 'block';
+    }
+    
+    // Update or create agent row
+    updateAgentRow(agent, status, message);
+}
+
+function updateAgentRow(agentName, status, message) {
+    const teamsContainer = document.getElementById('agentTeams');
+    if (!teamsContainer) return;
+    
+    // Find which team this agent belongs to
+    let teamKey = null;
+    let teamIndex = -1;
+    for (const [key, agents] of Object.entries(AGENT_TEAMS)) {
+        const idx = agents.findIndex(a => a.name === agentName);
+        if (idx !== -1) {
+            teamKey = key;
+            teamIndex = idx;
+            break;
+        }
+    }
+    
+    if (!teamKey) {
+        // Agent not in predefined teams, skip
+        return;
+    }
+    
+    // Get or create team section
+    let teamSection = document.getElementById(`team-${teamKey.replace(/\s+/g, '-')}`);
+    if (!teamSection) {
+        teamSection = createTeamSection(teamKey);
+        teamsContainer.appendChild(teamSection);
+    }
+    
+    // Get or create agent row
+    let agentRow = document.getElementById(`agent-${agentName.replace(/\s+/g, '-')}`);
+    if (!agentRow) {
+        agentRow = createAgentRow(agentName, teamKey);
+        teamSection.appendChild(agentRow);
+    }
+    
+    // Update row with new status
+    const config = STATUS_CONFIG[status] || STATUS_CONFIG["pending"];
+    const agentInfo = AGENT_TEAMS[teamKey].find(a => a.name === agentName) || {};
+    
+    agentRow.innerHTML = `
+        <span class="agent-icon" style="color: ${agentInfo.color || '#6a6a8a'}">${agentInfo.icon || '\u2699\ufe0f'}</span>
+        <span class="agent-name">${escapeHtml(agentName)}</span>
+        <span class="agent-status" style="color: ${config.color}">
+            ${config.icon} ${config.label}
+        </span>
+    `;
+}
+
+function createTeamSection(teamKey) {
+    const container = document.getElementById('agentTeams');
+    const section = document.createElement('div');
+    section.className = 'agent-team-section';
+    section.id = `team-${teamKey.replace(/\s+/g, '-')}`;
+    
+    const title = document.createElement('div');
+    title.className = 'team-title';
+    title.textContent = teamKey;
+    
+    section.appendChild(title);
+    return section;
+}
+
+function createAgentRow(agentName, teamKey) {
+    const teamSection = document.getElementById(`team-${teamKey.replace(/\s+/g, '-')}`);
+    const row = document.createElement('div');
+    row.className = 'agent-row';
+    row.id = `agent-${agentName.replace(/\s+/g, '-')}`;
+    return row;
 }
 
 // ===== Task List =====
