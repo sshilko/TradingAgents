@@ -76,9 +76,14 @@ class OpenAIClient(BaseLLMClient):
         llm_kwargs = {"model": self.model}
 
         # Provider-specific base URL and auth
+        # User-provided base_url takes precedence over provider defaults
         if self.provider in _PROVIDER_CONFIG:
-            base_url, api_key_env = _PROVIDER_CONFIG[self.provider]
-            llm_kwargs["base_url"] = base_url
+            provider_base_url, api_key_env = _PROVIDER_CONFIG[self.provider]
+            # Only use provider default if no custom base_url was provided
+            if self.base_url:
+                llm_kwargs["base_url"] = self.base_url
+            else:
+                llm_kwargs["base_url"] = provider_base_url
             if api_key_env:
                 api_key = os.environ.get(api_key_env)
                 if api_key:
