@@ -183,6 +183,9 @@ function buildConfigOverrides() {
     const debateRounds = document.getElementById('debateRounds').value;
     if (debateRounds) config.max_debate_rounds = parseInt(debateRounds);
     
+    const baseUrl = document.getElementById('baseUrl').value.trim();
+    if (baseUrl) config.backend_url = baseUrl;
+    
     return Object.keys(config).length > 0 ? config : null;
 }
 

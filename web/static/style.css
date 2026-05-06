@@ -177,6 +177,12 @@ body {
     font-size: 0.75rem;
 }
 
+.optional {
+    color: var(--text-muted);
+    font-weight: normal;
+    font-size: 0.8em;
+}
+
 /* Analyst Grid */
 .analyst-grid {
     display: flex;

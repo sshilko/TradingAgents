@@ -98,15 +98,20 @@
                         </div>
                         <div class="form-group">
                             <label for="deepModel">Deep Think Model</label>
-                            <input type="text" id="deepModel" placeholder="gpt-oss:20b" value="qwen3.6:35b-a3b-q8_0">
+                            <input type="text" id="deepModel" placeholder="gpt-oss:20b" value="gpt-oss:20b">
                         </div>
                         <div class="form-group">
                             <label for="quickModel">Quick Think Model</label>
-                            <input type="text" id="quickModel" placeholder="gpt-oss:20b" value="qwen3.6:35b-a3b-q8_0">
+                            <input type="text" id="quickModel" placeholder="gpt-oss:20b" value="gpt-oss:20b">
                         </div>
                         <div class="form-group">
                             <label for="debateRounds">Debate Rounds</label>
-                            <input type="number" id="debateRounds" min="1" max="10" placeholder="3" value="3">
+                            <input type="number" id="debateRounds" min="1" max="10" placeholder="1" value="1">
+                        </div>
+                        <div class="form-group">
+                            <label for="baseUrl">API Endpoint URL <span class="optional">(optional)</span></label>
+                            <input type="text" id="baseUrl" placeholder="Auto-detected from provider" value="http://192.168.178.78:11434/v1">
+                            <small class="hint">Override the default API endpoint for the selected provider. Leave empty to use the default.</small>
                         </div>
                     </div>
                 </div>
