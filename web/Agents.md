@@ -72,3 +72,57 @@ Browser ←→ SSE Stream ←→ FastAPI ←→ TaskManager ←→ EventEmitter 
 ### Type Warnings
 
 Pylance reports type inference warnings due to dynamic `DEFAULT_CONFIG` typing (`dict[str, Unknown]`) and uninstalled web dependencies. These are expected and do not affect runtime behavior. Install dependencies with `pip install -r requirements-web.txt` to resolve pydantic/fastapi import warnings.
+
+### Status Updates - Architecture Overview
+
+```mermaid
+flowchart LR
+    subgraph Browser
+        HTML[HTML Frontend]
+        JS[JavaScript Handler]
+        UI[Agent Status Panel]
+    end
+    
+    subgraph WebServer
+        SSE[SSE Endpoint]
+        EMIT[EventEmitter]
+        RUNNER[Runner - Streaming]
+        GRAPH[TradingAgentsGraph]
+    end
+    
+    HTML <-- EventSource --> SSE
+    SSE <-- Pulls --> EMIT
+    EMIT <-- Emits --> RUNNER
+    RUNNER <-- Streams chunks --> GRAPH
+    
+    GRAPH -.-> chunk1[Chunk 1: Market Analyst]
+    GRAPH -.-> chunk2[Chunk 2: Social Analyst]
+    GRAPH -.-> chunk3[Chunk 3: Research Team]
+    GRAPH -.-> chunk4[Chunk 4: Risk Team]
+    GRAPH -.-> chunk5[Chunk 5: Final Decision]
+    
+    RUNNER --> agent1[emit_agent_status Market Analyst in_progress]
+    RUNNER --> agent2[emit_agent_status Market Analyst completed]
+    RUNNER --> agent3[emit_agent_status Bull Researcher in_progress]
+    RUNNER --> agent4[emit_agent_status Portfolio Manager completed]
+```
+
+### Status Updates - Agent Status Mapping
+
+The following agent status transitions will be tracked based on the graph state keys:
+
+| Graph State Key | Agent | Status Transition |
+|-----------------|-------|-------------------|
+| `market_report` present | Market Analyst | completed |
+| `sentiment_report` present | Social Analyst | completed |
+| `news_report` present | News Analyst | completed |
+| `fundamentals_report` present | Fundamentals Analyst | completed |
+| All analysts completed | Bull Researcher | in_progress → completed |
+| All analysts completed | Bear Researcher | in_progress → completed |
+| `investment_debate_state.judge_decision` present | Research Manager | completed |
+| Research Manager completed | Trader | in_progress → completed |
+| Trader completed | Aggressive Analyst | in_progress → completed |
+| `risk_debate_state` has content | Neutral/Conservative Analyst | in_progress → completed |
+| `risk_debate_state.judge_decision` present | Portfolio Manager | completed |
+
+---
