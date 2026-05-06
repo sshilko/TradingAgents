@@ -1,0 +1,16 @@
+# TradingAgents Web Interface Dependencies
+# Install with: pip install -r requirements-web.txt
+
+# Web Framework
+fastapi>=0.115.0
+uvicorn[standard]>=0.32.0
+
+# SSE Support
+sse-starlette>=2.2.0
+
+# Form Data Parsing
+python-multipart>=0.0.12
+
+# Optional: For production deployment
+# gunicorn>=23.0.0
+# uvicorn-worker>=0.3.0

@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TradingAgents - Multi-Agent Trading Analysis</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <div class="app-container">
+        <!-- Header -->
+        <header class="header">
+            <div class="logo">
+                <span class="logo-icon">&#9881;</span>
+                <h1>TradingAgents</h1>
+            </div>
+            <p class="subtitle">Multi-Agent LLM Trading Framework</p>
+            <div id="healthIndicator" class="health-indicator" title="Checking health..."></div>
+        </header>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Left Panel: Configuration -->
+            <aside class="config-panel">
+                <h2>Configuration</h2>
+                
+                <!-- Ticker Input -->
+                <div class="form-group">
+                    <label for="ticker">Ticker Symbol</label>
+                    <input type="text" id="ticker" value="SPY" placeholder="e.g., SPY, AAPL, NVDA, 7203.T">
+                    <small class="hint">Examples: SPY, CNC.TO, 7203.T, 0700.HK</small>
+                </div>
+
+                <!-- Date Input -->
+                <div class="form-group">
+                    <label for="date">Analysis Date</label>
+                    <input type="date" id="date">
+                </div>
+
+                <!-- Analyst Selection -->
+                <div class="form-group">
+                    <label>Analysts Team</label>
+                    <div class="analyst-grid">
+                        <label class="analyst-checkbox">
+                            <input type="checkbox" id="a_market" checked>
+                            <span class="checkmark"></span>
+                            <span class="analyst-info">
+                                <strong>Market Analyst</strong>
+                                <span>Price & volume analysis</span>
+                            </span>
+                        </label>
+                        <label class="analyst-checkbox">
+                            <input type="checkbox" id="a_social" checked>
+                            <span class="checkmark"></span>
+                            <span class="analyst-info">
+                                <strong>Social Media</strong>
+                                <span>Sentiment analysis</span>
+                            </span>
+                        </label>
+                        <label class="analyst-checkbox">
+                            <input type="checkbox" id="a_news" checked>
+                            <span class="checkmark"></span>
+                            <span class="analyst-info">
+                                <strong>News Analyst</strong>
+                                <span>News & insider data</span>
+                            </span>
+                        </label>
+                        <label class="analyst-checkbox">
+                            <input type="checkbox" id="a_fundamentals" checked>
+                            <span class="checkmark"></span>
+                            <span class="analyst-info">
+                                <strong>Fundamentals</strong>
+                                <span>Financial analysis</span>
+                            </span>
+                        </label>
+                    </div>
+                    <div class="analyst-actions">
+                        <button class="btn-small" onclick="toggleAllAnalysts(true)">Select All</button>
+                        <button class="btn-small" onclick="toggleAllAnalysts(false)">Deselect All</button>
+                    </div>
+                </div>
+
+                <!-- Advanced Settings Toggle -->
+                <div class="form-group">
+                    <button class="btn-toggle" onclick="toggleAdvanced()">
+                        <span class="toggle-icon">&#9654;</span> Advanced Settings
+                    </button>
+                    <div id="advancedSettings" class="advanced-panel" style="display: none;">
+                        <div class="form-group">
+                            <label for="llmProvider">LLM Provider</label>
+                            <select id="llmProvider">
+                                <option value="">Default</option>
+                                <option value="openai">OpenAI</option>
+                                <option value="anthropic">Anthropic</option>
+                                <option value="google">Google</option>
+                                <option value="ollama" selected>Ollama</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="deepModel">Deep Think Model</label>
+                            <input type="text" id="deepModel" placeholder="gpt-oss:20b" value="qwen3.6:35b-a3b-q8_0">
+                        </div>
+                        <div class="form-group">
+                            <label for="quickModel">Quick Think Model</label>
+                            <input type="text" id="quickModel" placeholder="gpt-oss:20b" value="qwen3.6:35b-a3b-q8_0">
+                        </div>
+                        <div class="form-group">
+                            <label for="debateRounds">Debate Rounds</label>
+                            <input type="number" id="debateRounds" min="1" max="10" placeholder="3" value="3">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Run Button -->
+                <button id="runBtn" class="btn-primary" onclick="startAnalysis()">
+                    <span class="btn-icon">&#9654;</span> Run Analysis
+                </button>
+
+                <!-- Active Tasks -->
+                <div id="activeTasks" class="active-tasks" style="display: none;">
+                    <h3>Active Tasks</h3>
+                    <div id="taskList"></div>
+                </div>
+            </aside>
+
+            <!-- Right Panel: Results -->
+            <section class="results-panel">
+                <!-- Status Bar -->
+                <div id="statusBar" class="status-bar" style="display: none;">
+                    <div class="status-header">
+                        <span id="statusTitle" class="status-title">Analysis in Progress</span>
+                        <span id="statusStep" class="status-step"></span>
+                    </div>
+                    <div class="progress-container">
+                        <div class="progress-bar">
+                            <div id="progressFill" class="progress-fill" style="width: 0%"></div>
+                        </div>
+                        <span id="progressPercent" class="progress-percent">0%</span>
+                    </div>
+                    <p id="statusMessage" class="status-message">Initializing...</p>
+                </div>
+
+                <!-- Results Container -->
+                <div id="results" class="results-container">
+                    <!-- Welcome Message -->
+                    <div class="welcome-message">
+                        <div class="welcome-icon">&#128200;</div>
+                        <h2>Welcome to TradingAgents</h2>
+                        <p>Configure your analysis parameters on the left and click "Run Analysis" to get started.</p>
+                        <div class="features-grid">
+                            <div class="feature-card">
+                                <span class="feature-icon">&#128202;</span>
+                                <h3>Market Analysis</h3>
+                                <p>Technical indicators and price action</p>
+                            </div>
+                            <div class="feature-card">
+                                <span class="feature-icon">&#128172;</span>
+                                <h3>Sentiment Analysis</h3>
+                                <p>Social media sentiment tracking</p>
+                            </div>
+                            <div class="feature-card">
+                                <span class="feature-icon">&#128221;</span>
+                                <h3>News Analysis</h3>
+                                <p>Latest news and insider transactions</p>
+                            </div>
+                            <div class="feature-card">
+                                <span class="feature-icon">&#128202;</span>
+                                <h3>Fundamentals</h3>
+                                <p>Financial statement analysis</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </main>
+
+        <!-- Footer -->
+        <footer class="footer">
+            <span>TradingAgents v1.0</span>
+            <span class="separator">|</span>
+            <span id="timestamp"></span>
+        </footer>
+    </div>
+
+    <script src="/static/app.js"></script>
+</body>
+</html>
