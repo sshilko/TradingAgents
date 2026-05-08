@@ -246,79 +246,79 @@ function connectToStream(taskId) {
         }
     };
     
-    // Handle report events
-    eventSource.addEventListener('report', function(event) {
-        try {
-            const data = JSON.parse(event.data);
-            reportCount++;
-            addReportCard(data.type, data.content, reportCount);
-        } catch (err) {
-            console.warn('Failed to parse report event:', err);
-        }
-    });
+	// Handle report events
+	eventSource.addEventListener('report', function(event) {
+		try {
+			const data = JSON.parse(event.data);
+			reportCount++;
+			addReportCard(data.data.type, data.data.content, reportCount);
+		} catch (err) {
+			console.warn('Failed to parse report event:', err);
+		}
+	});
     
-    // Handle decision events
-    eventSource.addEventListener('decision', function(event) {
-        try {
-            const data = JSON.parse(event.data);
-            addDecisionCard(data.content);
-        } catch (err) {
-            console.warn('Failed to parse decision event:', err);
-        }
-    });
+	// Handle decision events
+	eventSource.addEventListener('decision', function(event) {
+		try {
+			const data = JSON.parse(event.data);
+			addDecisionCard(data.data.content);
+		} catch (err) {
+			console.warn('Failed to parse decision event:', err);
+		}
+	});
     
-    // Handle signal events
-    eventSource.addEventListener('signal', function(event) {
-        try {
-            const data = JSON.parse(event.data);
-            addSignalCard(data);
-        } catch (err) {
-            console.warn('Failed to parse signal event:', err);
-        }
-    });
+	// Handle signal events
+	eventSource.addEventListener('signal', function(event) {
+		try {
+			const data = JSON.parse(event.data);
+			addSignalCard(data.data);
+		} catch (err) {
+			console.warn('Failed to parse signal event:', err);
+		}
+	});
     
-    // Handle agent status events
-    eventSource.addEventListener('agent_status', function(event) {
-        try {
-            const data = JSON.parse(event.data);
-            handleAgentStatusEvent(data);
-        } catch (err) {
-            console.warn('Failed to parse agent_status event:', err);
-        }
-    });
+	// Handle agent status events
+	eventSource.addEventListener('agent_status', function(event) {
+		try {
+			const data = JSON.parse(event.data);
+			handleAgentStatusEvent(data.data);
+		} catch (err) {
+			console.warn('Failed to parse agent_status event:', err);
+		}
+	});
     
-    // Handle completion events
-    eventSource.addEventListener('complete', function(event) {
-        try {
-            const data = JSON.parse(event.data);
-            document.getElementById('statusTitle').textContent = 'Analysis Complete';
-            document.getElementById('statusStep').textContent = '';
-            document.getElementById('statusMessage').textContent = 
-                `Finished at ${new Date(data.timestamp).toLocaleTimeString()}`;
-            updateProgress(100);
-            
-            // Close stream
-            eventSource.close();
-            AppState.activeStreams.delete(taskId);
-            
-            // Update task list
-            updateTaskList();
-        } catch (err) {
-            console.warn('Failed to parse complete event:', err);
-        }
-    });
+	// Handle completion events
+	eventSource.addEventListener('complete', function(event) {
+		try {
+			const data = JSON.parse(event.data);
+			document.getElementById('statusTitle').textContent = 'Analysis Complete';
+			document.getElementById('statusStep').textContent = '';
+			document.getElementById('statusMessage').textContent = 
+				`Finished at ${new Date(data.data.timestamp).toLocaleTimeString()}`;
+			updateProgress(100);
+			
+			// Close stream
+			eventSource.close();
+			AppState.activeStreams.delete(taskId);
+			
+			// Update task list
+			updateTaskList();
+		 } catch (err) {
+			console.warn('Failed to parse complete event:', err);
+		 }
+	});
     
-    // Handle error events
-    eventSource.addEventListener('error', function(event) {
-        try {
-            const data = JSON.parse(event.data);
-            document.getElementById('statusTitle').textContent = 'Analysis Failed';
-            document.getElementById('statusMessage').textContent = data.message || 'Unknown error';
-            addErrorCard(data.message || 'Unknown error');
-            
-            eventSource.close();
-            AppState.activeStreams.delete(taskId);
-        } catch (parseErr) {
+	// Handle error events
+	eventSource.addEventListener('error', function(event) {
+		try {
+			const data = JSON.parse(event.data);
+			document.getElementById('statusTitle').textContent = 'Analysis Failed';
+			document.getElementById('statusMessage').textContent = data.data.message || 'Unknown error';
+			addErrorCard(data.data.message || 'Unknown error');
+			
+			eventSource.close();
+			AppState.activeStreams.delete(taskId);
+		  } catch (parseErr) {
             // Real SSE error (connection lost)
             console.error('SSE connection error');
             document.getElementById('statusMessage').textContent = 'Connection lost';
