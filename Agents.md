@@ -1,156 +1,39 @@
-# TradingAgents Architecture Overview
+# TradingAgents — Agent Guide
 
-This document provides a high‑level view of the **TradingAgents** framework, its core modules, and how they interact to produce a trading decision. It is intended for developers who want to understand the design before contributing or extending the system.
+Multi-agent LLM trading framework. LangGraph orchestrates analyst → researcher debate → trader → risk → portfolio-manager agents to produce a trade decision for a ticker/date.
 
----
+## Runs / entrypoints
 
-## 1. Project Structure
+- **Interactive CLI** (the main product): console command `tradingagents` (equivalently `python -m cli.main`). Run from the project root. It drops into a questionary/typer picker for ticker, date, analysts, provider, model, output language. The `analyze` subcommand is the same flow: `tradingagents analyze [--checkpoint] [--clear-checkpoints]`.
+- **Single run example**: `python main.py` (hardcoded NVDA analysis).
+- **Web UI**: `pip install -r requirements-web.txt` then `uvicorn web.app:app --host 0.0.0.0 --port 8000`. SSE-based; frontend embedded in `web/app.py`.
 
-```
-tradingagents/
-├─ agents/                # LLM‑powered agent factories and utilities
-│  ├─ analysts/           # Fundamental, market, news, social‑media analysts
-│  ├─ researchers/        # Bull / Bear researchers
-│  ├─ risk_mgmt/          # Aggressive / Conservative / Neutral debaters
-│  ├─ managers/           # Research & Portfolio managers
-│  ├─ trader/             # Trader agent
-│  └─ utils/              # Shared utilities (state, memory, helpers)
-├─ dataflows/             # Data‑access layer (AlphaVantage, yfinance, etc.)
-├─ graph/                 # LangGraph orchestration
-│  ├─ checkpointer.py
-│  ├─ conditional_logic.py
-│  ├─ propagation.py
-│  ├─ reflection.py
-│  ├─ signal_processing.py
-│  ├─ setup.py
-│  └─ trading_graph.py
-├─ llm_clients/           # LLM provider wrappers
-│  ├─ base_client.py
-│  ├─ factory.py
-│  ├─ openai_client.py
-│  ├─ anthropic_client.py
-│  ├─ azure_client.py
-│  ├─ google_client.py
-│  ├─ model_catalog.py
-│  └─ validators.py
-├─ default_config.py      # Default configuration dictionary
-├─ main.py                # Example entry‑point
-└─ ...
-```
+## Venv / Python
 
-## 2. Core Concepts
+- On Windows the `.venv` was originally created by `uv` and may point at a deleted managed interpreter (`No Python at ...uv\python...`). Recreate with system Python: delete `.venv`, then `python -m venv .venv` (system python is `C:\Users\serge\AppData\Local\Programs\Python\Python313\python.exe`), then `pip install -e .` from the repo root.
+- Install editable: `pip install -e .` (installs the `tradingagents` console script from `cli.main:app`).
 
-| Concept | Description |
-|---------|-------------|
-| **Agent** | A stateless function that performs a specific task (e.g., fetch fundamentals, generate a sentiment report). Agents are created via factory functions in `tradingagents/agents/__init__.py`.
-| **Debate** | Two‑party discussion between *bull* and *bear* researchers or *aggressive* and *conservative* risk debaters. The debate is orchestrated by `ConditionalLogic` and results in a *judge decision*.
-| **Graph** | A LangGraph workflow that chains agents, debates, and decision‑making steps. The main entry point is `TradingAgentsGraph`.
-| **LLM Client** | Thin wrapper around a provider (OpenAI, Anthropic, Google, etc.) that exposes a `get_llm()` method. Created via `create_llm_client` in `llm_clients/factory.py`.
-| **Memory Log** | Persistent JSON log of past decisions and reflections stored under `~/.tradingagents/memory/trading_memory.md`. Used to provide context to the Portfolio Manager.
-| **Checkpoint** | Optional per‑ticker SQLite checkpoint that allows a crashed run to resume from the last successful node.
+## Tests
 
-## 3. Data Flow Overview
+- pytest only. No lint/typecheck/make/CI config exists in the repo.
+- Run: `pytest` (or `pytest tests/`). `tests/conftest.py` auto-injects dummy values for all `*_API_KEY` env vars so unit tests don't hang/error without real keys.
 
-```mermaid
-flowchart TD
-    subgraph LLMs
-        DL[Deep Think LLM]
-        QL[Quick Think LLM]
-    end
-    subgraph Data
-        Stock[Stock Data]
-        Ind[Indicators]
-        News[News & Insider]
-        Fund[Fundamentals]
-    end
-    subgraph Agents
-        MA[Market Analyst]
-        SA[Social Media Analyst]
-        NA[News Analyst]
-        FA[Fundamentals Analyst]
-        BR[Bull Researcher]
-        BE[Bear Researcher]
-        AD[Aggressive Debater]
-        CD[Conservative Debater]
-        ND[Neutral Debater]
-        RM[Research Manager]
-        PM[Portfolio Manager]
-        TR[Trader]
-    end
-    subgraph Graph
-        G[TradingAgentsGraph]
-    end
+## Config / LLM providers
 
-    Stock --> MA
-    Ind --> MA
-    News --> NA
-    News --> BR
-    News --> BE
-    Fund --> FA
-    MA --> RM
-    SA --> RM
-    NA --> RM
-    FA --> RM
-    RM --> BR
-    RM --> BE
-    BR --> AD
-    BE --> CD
-    AD --> ND
-    CD --> ND
-    ND --> RM
-    RM --> PM
-    PM --> TR
-    G --> DL
-    G --> QL
-    G --> Stock
-    G --> Ind
-    G --> News
-    G --> Fund
-```
+- All config lives in `tradingagents/default_config.py` (`DEFAULT_CONFIG`). Key keys: `llm_provider`, `deep_think_llm`, `quick_think_llm`, `backend_url`, `data_vendors`, `tool_vendors`, `max_debate_rounds`, `max_risk_discuss_rounds`, `output_language`, `checkpoint_enabled`.
+- LLM clients are created via `tradingagents/llm_clients/factory.py`. OpenAI-compatible providers (`openai`, `xai`, `deepseek`, `qwen`, `glm`, `ollama`, `openrouter`) all route through `OpenAIClient` in `llm_clients/openai_client.py`. `backend_url` overrides a provider default. Only native `openai` uses the Responses API; all other compatible providers use Chat Completions.
+- Data vendors default to `yfinance` (no API key needed). Alpha Vantage requires `ALPHA_VANTAGE_API_KEY`.
+- Set provider keys in `.env` (copied from `.env.example`). `main.py` and the CLI call `load_dotenv()`.
 
-1. **Data Retrieval** – Tool nodes (`get_stock_data`, `get_indicators`, `get_fundamentals`, `get_news`, etc.) fetch data from the configured vendor (AlphaVantage or yfinance).
-2. **Analyst Reports** – Each analyst agent consumes the relevant data and produces a report.
-3. **Debate Phase** – Researchers debate the analyst reports. The debate is limited by `max_debate_rounds` and `max_risk_discuss_rounds`.
-4. **Decision Phase** – The Portfolio Manager aggregates debate outcomes, adds memory context, and produces a *final trade decision*.
-5. **Trader Execution** – The Trader agent formats the decision into an actionable plan.
-6. **Post‑Processing** – `SignalProcessor` extracts the core signal, and `Reflector` generates a reflection for future runs.
+## Local working-tree gotchas
 
-## 4. Key Files & Their Roles
+- The working tree currently has **uncommitted local changes** (see `git status` / `git diff`) that hardcode a custom local endpoint: `main.py` sets `llm_provider="ollama"`, `backend_url="http://localhost:20128/v1"`, models `auto/best-free`; `openai_client.py` changed the ollama default URL to `localhost:20128/v1` and bakes in a **secret API key** (`sk-36a78aaa...`). Do not commit that key — it is a local dev setup, not repo baseline.
+- The OpenAI-compatible model catalog (`llm_clients/model_catalog.py`) has an entry `auto/best-free` added for the local endpoint; the endpoint's real model ID is `auto/best-free` (not `omnicode-local/...`). When targeting a custom endpoint, verify the exact model ID against `GET /v1/models`.
 
-| File | Purpose |
-|------|---------|
-| `tradingagents/graph/trading_graph.py` | Orchestrates the entire workflow; creates LLM clients, tool nodes, and compiles the LangGraph. Handles checkpointing and memory‑log resolution.
-| `tradingagents/graph/setup.py` | Builds the LangGraph nodes and edges.
-| `tradingagents/graph/conditional_logic.py` | Implements debate logic and round limits.
-| `tradingagents/graph/propagation.py` | Provides helper methods to create the initial state and run the graph.
-| `tradingagents/graph/reflection.py` | Generates reflections based on final decisions and returns.
-| `tradingagents/graph/signal_processing.py` | Extracts the core signal from the trader’s plan.
-| `tradingagents/llm_clients/factory.py` | Factory for LLM clients; selects provider based on config.
-| `tradingagents/agents/utils/agent_utils.py` | Abstract tool functions (`get_stock_data`, `get_fundamentals`, etc.) used by tool nodes.
-| `tradingagents/agents/utils/agent_states.py` | Data classes for debate and risk states.
-| `tradingagents/agents/utils/memory.py` | Handles reading/writing the persistent memory log.
-| `tradingagents/default_config.py` | Default configuration dictionary; can be overridden by user.
-| `main.py` | Example script that demonstrates how to instantiate `TradingAgentsGraph` and run a single analysis.
+## Structure
 
-## 5. Extending the Framework
-
-1. **Add a new data source** – Implement a new tool function in `agent_utils.py` and register it in `_create_tool_nodes`.
-2. **Create a new agent** – Write a factory function in the appropriate sub‑package (e.g., `analysts/`) and expose it via `__all__`.
-3. **Change debate logic** – Modify `ConditionalLogic` or create a new subclass.
-4. **Swap LLM provider** – Update `DEFAULT_CONFIG` or pass a custom config to `TradingAgentsGraph`.
-
-## 6. Running the Example
-
-```bash
-# Install dependencies
-pip install .
-
-# Run the example
-python main.py
-```
-
-The script will produce a JSON log under `~/.tradingagents/logs/<TICKER>/TradingAgentsStrategy_logs/` and a reflection in the memory log.
-
----
-
-For more detailed information, refer to the individual module docstrings and the README.
+- `tradingagents/agents/` — agent factories (`analysts/`, `researchers/`, `risk_mgmt/`, `managers/`, `trader/`, `utils/`). Expose new agents via `__all__` in `tradingagents/agents/__init__.py`.
+- `tradingagents/dataflows/` — data-access layer (yfinance / AlphaVantage).
+- `tradingagents/graph/` — LangGraph orchestration. `trading_graph.py` builds clients/tools and compiles the graph; `setup.py` wires nodes/edges; `tradingagents/agents/utils/agent_utils.py` holds the abstract tool functions registered as tool nodes.
+- `cli/` — interactive CLI (Typer + questionary + rich). `web/` — FastAPI UI (see `web/AGENTS.md`).
+- Run output persists to `~/.tradingagents/` (logs, cache, memory log).

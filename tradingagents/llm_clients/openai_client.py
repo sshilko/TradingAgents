@@ -34,20 +34,29 @@ class NormalizedChatOpenAI(ChatOpenAI):
             method = "function_calling"
         return super().with_structured_output(schema, method=method, **kwargs)
 
+
 # Kwargs forwarded from user config to ChatOpenAI
 _PASSTHROUGH_KWARGS = (
-    "timeout", "max_retries", "reasoning_effort",
-    "api_key", "callbacks", "http_client", "http_async_client",
+    "timeout",
+    "max_retries",
+    "reasoning_effort",
+    "api_key",
+    "callbacks",
+    "http_client",
+    "http_async_client",
 )
 
 # Provider base URLs and API key env vars
 _PROVIDER_CONFIG = {
     "xai": ("https://api.x.ai/v1", "XAI_API_KEY"),
     "deepseek": ("https://api.deepseek.com", "DEEPSEEK_API_KEY"),
-    "qwen": ("https://dashscope-intl.aliyuncs.com/compatible-mode/v1", "DASHSCOPE_API_KEY"),
+    "qwen": (
+        "https://dashscope-intl.aliyuncs.com/compatible-mode/v1",
+        "DASHSCOPE_API_KEY",
+    ),
     "glm": ("https://api.z.ai/api/paas/v4/", "ZHIPU_API_KEY"),
     "openrouter": ("https://openrouter.ai/api/v1", "OPENROUTER_API_KEY"),
-    "ollama": ("http://localhost:11434/v1", None),
+    "ollama": ("http://localhost:20128/v1", None),
 }
 
 
@@ -89,7 +98,9 @@ class OpenAIClient(BaseLLMClient):
                 if api_key:
                     llm_kwargs["api_key"] = api_key
             else:
-                llm_kwargs["api_key"] = "ollama"
+                llm_kwargs["api_key"] = os.environ.get(
+                    "API_KEY", "sk-36a78aaa90462ca8-ee5de3-7843254f"
+                )
         elif self.base_url:
             llm_kwargs["base_url"] = self.base_url
 
