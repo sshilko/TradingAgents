@@ -1,24 +1,32 @@
-"""Shared model catalog for CLI selections and validation."""
+"""Shared model catalog for CLI selections and validation.
+
+The built-in providers below ship with the package. Providers defined in the
+external `models.json` file (see `external_providers.py`) are merged into
+`MODEL_OPTIONS`, so adding a provider or a model needs no Python change.
+"""
 
 from __future__ import annotations
 
-from typing import Dict, List, Tuple
+from typing import Dict, List, Optional, Tuple
+
+from .external_providers import (
+    get_default_provider as _get_file_default_provider,
+)
+from .external_providers import get_external_providers, with_custom_option
 
 ModelOption = Tuple[str, str]
 ProviderModeOptions = Dict[str, Dict[str, List[ModelOption]]]
 
 
-MODEL_OPTIONS: ProviderModeOptions = {
+_BUILTIN_MODEL_OPTIONS: ProviderModeOptions = {
     "openai": {
         "quick": [
-            ("Omnicode Local - Best free model", "auto/best-free"),
             ("GPT-5.4 Mini - Fast, strong coding and tool use", "gpt-5.4-mini"),
             ("GPT-5.4 Nano - Cheapest, high-volume tasks", "gpt-5.4-nano"),
             ("GPT-5.4 - Latest frontier, 1M context", "gpt-5.4"),
             ("GPT-4.1 - Smartest non-reasoning model", "gpt-4.1"),
         ],
         "deep": [
-            ("Omnicode Local - Best free model", "auto/best-free"),
             ("GPT-5.4 - Latest frontier, 1M context", "gpt-5.4"),
             ("GPT-5.2 - Strong reasoning, cost-effective", "gpt-5.2"),
             ("GPT-5.4 Mini - Fast, strong coding and tool use", "gpt-5.4-mini"),
@@ -137,28 +145,104 @@ MODEL_OPTIONS: ProviderModeOptions = {
     # OpenRouter: fetched dynamically. Azure: any deployed model name.
     "ollama": {
         "quick": [
-            ("Omnicode Local - Best free model", "auto/best-free"),
+            ("Omnicode Local - Best free model", "auto/best"),
+            (
+                "Omnicode Local - openrouter/openrouter/free",
+                "openrouter/openrouter/free",
+            ),
             ("qwen3.6:35b-a3b-q8_0", "qwen3.6:35b-a3b-q8_0"),
             ("GLM-4.7-Flash:latest (30B, local)", "glm-4.7-flash:latest"),
             ("Qwen3.5:4b (4B, local)", "qwen3.5:4b"),
             ("Qwen3:latest (8B, local)", "qwen3:latest"),
             ("GPT-OSS:latest (20B, local)", "gpt-oss:20b"),
+            ("Custom model ID", "custom"),
         ],
         "deep": [
-            ("Omnicode Local - Best free model", "auto/best-free"),
+            ("Omnicode Local - Best free model", "auto/best"),
+            (
+                "Omnicode Local - openrouter/openrouter/free",
+                "openrouter/openrouter/free",
+            ),
             ("qwen3.6:35b-a3b-q8_0", "qwen3.6:35b-a3b-q8_0"),
             ("GLM-4.7-Flash:latest (30B, local)", "glm-4.7-flash:latest"),
             ("Qwen3.5:4b (4B, local)", "qwen3.5:4b"),
             ("GPT-OSS:latest (20B, local)", "gpt-oss:20b"),
             ("Qwen3:latest (8B, local)", "qwen3:latest"),
+            ("Custom model ID", "custom"),
         ],
     },
 }
 
 
+def _build_model_options() -> ProviderModeOptions:
+    """Return the built-in catalog with the external providers merged in."""
+    merged: ProviderModeOptions = {
+        provider: {mode: list(options) for mode, options in mode_options.items()}
+        for provider, mode_options in _BUILTIN_MODEL_OPTIONS.items()
+    }
+
+    for provider_key, provider in get_external_providers().items():
+        merged[provider_key] = with_custom_option(provider)
+
+    return merged
+
+
+# Built-in catalog plus every provider from the external file.
+MODEL_OPTIONS: ProviderModeOptions = _build_model_options()
+
+
+def refresh_model_options() -> ProviderModeOptions:
+    """Reload the external providers into MODEL_OPTIONS.
+
+    The function updates MODEL_OPTIONS in place, so modules that imported the
+    name keep seeing the current catalog.
+    """
+    fresh = _build_model_options()
+
+    if fresh != MODEL_OPTIONS:
+        MODEL_OPTIONS.clear()
+        MODEL_OPTIONS.update(fresh)
+
+    return MODEL_OPTIONS
+
+
+def get_provider_options() -> Dict[str, List[Tuple[str, Optional[str]]]]:
+    """Return (label, base_url) for every external provider, in file order."""
+    return {
+        provider_key: (provider.label, provider.base_url)
+        for provider_key, provider in get_external_providers().items()
+    }
+
+
 def get_model_options(provider: str, mode: str) -> List[ModelOption]:
     """Return shared model options for a provider and selection mode."""
-    return MODEL_OPTIONS[provider.lower()][mode]
+    return refresh_model_options()[provider.lower()][mode]
+
+
+def get_default_provider() -> Optional[str]:
+    """Return the provider the CLI should preselect, or None.
+
+    The value comes from the `default_provider` key in `models.json`. It is
+    None when the file marks no provider, in which case callers keep their own
+    built-in default.
+    """
+    return _get_file_default_provider()
+
+
+def get_default_model(provider: str, mode: str) -> Optional[str]:
+    """Return the model ID marked as default for a provider and mode.
+
+    The mark is the option object field `"default": true` in `models.json`.
+    The result is None for a built-in provider, for a mode with no mark, and
+    for a provider that is not in the catalog at all, so callers can fall back
+    to their own default or to the first option of the list.
+    """
+    entry = get_external_providers().get(provider.strip().lower())
+
+    if entry is None:
+        return None
+
+    return entry.defaults.get(mode)
 
 
 def get_known_models() -> Dict[str, List[str]]:
@@ -167,5 +251,5 @@ def get_known_models() -> Dict[str, List[str]]:
         provider: sorted(
             {value for options in mode_options.values() for _, value in options}
         )
-        for provider, mode_options in MODEL_OPTIONS.items()
+        for provider, mode_options in refresh_model_options().items()
     }

@@ -1,6 +1,18 @@
 import os
 
+from tradingagents.llm_clients.model_catalog import (
+    get_default_model,
+    get_default_provider,
+)
+
 _TRADINGAGENTS_HOME = os.path.join(os.path.expanduser("~"), ".tradingagents")
+
+# models.json can mark a default provider and a default model per mode with
+# "default_provider" and "default": true. The environment still wins, so a
+# .env value or a CLI selection overrides both. The model default is looked up
+# for the provider that is actually in use, never for the file's default one.
+_LLM_PROVIDER = os.getenv("LLM_PROVIDER") or get_default_provider() or "ollama"
+_LLM_MODEL = os.getenv("LLM_MODEL")
 
 DEFAULT_CONFIG = {
     "project_dir": os.path.abspath(os.path.join(os.path.dirname(__file__), ".")),
@@ -19,9 +31,13 @@ DEFAULT_CONFIG = {
     # Pending entries are never pruned. None disables rotation entirely.
     "memory_log_max_entries": None,
     # LLM settings (override via LLM_PROVIDER, LLM_MODEL, LLM_BACKEND_URL in .env)
-    "llm_provider": os.getenv("LLM_PROVIDER", "ollama"),
-    "deep_think_llm": os.getenv("LLM_MODEL", "auto/best-free"),
-    "quick_think_llm": os.getenv("LLM_MODEL", "auto/best-free"),
+    "llm_provider": _LLM_PROVIDER,
+    "deep_think_llm": _LLM_MODEL
+    or get_default_model(_LLM_PROVIDER, "deep")
+    or "auto/best",
+    "quick_think_llm": _LLM_MODEL
+    or get_default_model(_LLM_PROVIDER, "quick")
+    or "auto/best",
     # When None, each provider's client falls back to its own default endpoint
     # (api.openai.com for OpenAI, generativelanguage.googleapis.com for Gemini, ...).
     # The CLI overrides this per provider when the user picks one. Keeping a

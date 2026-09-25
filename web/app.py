@@ -12,7 +12,14 @@ from fastapi.responses import HTMLResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.encoders import jsonable_encoder
 
-from web.config import SERVER_HOST, SERVER_PORT, DEBUG, get_safe_config, ANALYST_OPTIONS, LLM_PROVIDER_OPTIONS
+from web.config import (
+    SERVER_HOST,
+    SERVER_PORT,
+    DEBUG,
+    get_safe_config,
+    ANALYST_OPTIONS,
+    get_llm_provider_options,
+)
 from web.models import AnalysisRequest, AnalysisResponse, TaskStatus, ConfigResponse
 from web.events import task_manager
 from web.runner import run_analysis, get_task_status
@@ -20,7 +27,7 @@ from web.runner import run_analysis, get_task_status
 # Configure logging
 logging.basicConfig(
     level=logging.DEBUG if DEBUG else logging.INFO,
-    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
 )
 logger = logging.getLogger(__name__)
 
@@ -28,7 +35,9 @@ logger = logging.getLogger(__name__)
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     """Application lifespan handler."""
-    logger.info("TradingAgents Web Interface starting on %s:%s", SERVER_HOST, SERVER_PORT)
+    logger.info(
+        "TradingAgents Web Interface starting on %s:%s", SERVER_HOST, SERVER_PORT
+    )
     yield
     logger.info("TradingAgents Web Interface shutting down")
 
@@ -37,7 +46,7 @@ app = FastAPI(
     title="TradingAgents Web Interface",
     description="Web-based interface for the TradingAgents multi-agent LLM trading framework",
     version="1.0.0",
-    lifespan=lifespan
+    lifespan=lifespan,
 )
 
 # CORS middleware for frontend
@@ -53,6 +62,7 @@ app.add_middleware(
 # =============================================================================
 # HTML Frontend
 # =============================================================================
+
 
 async def get_frontend_html() -> str:
     """Read the frontend HTML file."""
@@ -258,6 +268,7 @@ async def get_frontend_html() -> str:
 # API Endpoints
 # =============================================================================
 
+
 @app.get("/", response_class=HTMLResponse)
 async def serve_frontend():
     """Serve the frontend HTML."""
@@ -270,7 +281,7 @@ async def health_check():
     return {
         "status": "healthy",
         "active_tasks": len(task_manager.list_tasks()),
-        "timestamp": asyncio.get_event_loop().time()
+        "timestamp": asyncio.get_event_loop().time(),
     }
 
 
@@ -278,26 +289,26 @@ async def health_check():
 async def start_analysis(request: AnalysisRequest, background_tasks: BackgroundTasks):
     """Start a new analysis task."""
     logger.info(f"Starting analysis for {request.ticker} on {request.date}")
-    
+
     # Generate task ID
     task_id = str(uuid.uuid4())[:8]
-    
+
     # Create event emitter
     task_manager.create_task(task_id)
-    
+
     # Start analysis in background
     background_tasks.add_task(
         run_analysis,
         ticker=request.ticker,
         date=request.date,
         analysts=request.analysts,
-        config_overrides=request.config
+        config_overrides=request.config,
     )
-    
+
     return AnalysisResponse(
         task_id=task_id,
         status="started",
-        message=f"Analysis for {request.ticker} started"
+        message=f"Analysis for {request.ticker} started",
     )
 
 
@@ -305,22 +316,24 @@ async def start_analysis(request: AnalysisRequest, background_tasks: BackgroundT
 async def event_stream(task_id: str):
     """SSE event stream for real-time updates."""
     emitter = task_manager.get_emitter(task_id)
-    
+
     if emitter is None:
         # Check if result exists
         result = task_manager.get_result(task_id)
         if result:
-            raise HTTPException(status_code=404, detail="Task not found or already expired")
+            raise HTTPException(
+                status_code=404, detail="Task not found or already expired"
+            )
         raise HTTPException(status_code=404, detail="Task not found")
-    
+
     return StreamingResponse(
         emitter.event_generator(),
         media_type="text/event-stream",
         headers={
             "Cache-Control": "no-cache",
             "Connection": "keep-alive",
-            "X-Accel-Buffering": "no"
-        }
+            "X-Accel-Buffering": "no",
+        },
     )
 
 
@@ -328,10 +341,10 @@ async def event_stream(task_id: str):
 async def get_status(task_id: str):
     """Get the status of a task."""
     status = await get_task_status(task_id)
-    
+
     if status["status"] == "not_found":
         raise HTTPException(status_code=404, detail="Task not found")
-    
+
     return TaskStatus(**status)
 
 
@@ -341,7 +354,7 @@ async def get_config():
     return ConfigResponse(
         config=get_safe_config(),
         analysts=ANALYST_OPTIONS,
-        llm_providers=LLM_PROVIDER_OPTIONS
+        llm_providers=get_llm_provider_options(),
     )
 
 
@@ -350,10 +363,7 @@ async def get_history():
     """Get list of completed tasks."""
     tasks = task_manager.list_tasks()
     return {
-        "tasks": [
-            {"task_id": tid, "status": status}
-            for tid, status in tasks.items()
-        ]
+        "tasks": [{"task_id": tid, "status": status} for tid, status in tasks.items()]
     }
 
 
@@ -361,13 +371,15 @@ async def get_history():
 async def get_result(task_id: str):
     """Get the final result of a completed task."""
     result = task_manager.get_result(task_id)
-    
+
     if result is None:
-        raise HTTPException(status_code=404, detail="Result not found or task still running")
-    
+        raise HTTPException(
+            status_code=404, detail="Result not found or task still running"
+        )
+
     if "error" in result:
         raise HTTPException(status_code=500, detail=result["error"])
-    
+
     return result
 
 
@@ -377,6 +389,7 @@ async def get_result(task_id: str):
 
 # Mount static files directory if it exists
 import os
+
 static_dir = os.path.join(os.path.dirname(__file__), "static")
 if os.path.exists(static_dir):
     app.mount("/static", StaticFiles(directory=static_dir), name="static")
@@ -388,9 +401,5 @@ if os.path.exists(static_dir):
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(
-        "web.app:app",
-        host=SERVER_HOST,
-        port=SERVER_PORT,
-        reload=DEBUG
-    )
+
+    uvicorn.run("web.app:app", host=SERVER_HOST, port=SERVER_PORT, reload=DEBUG)

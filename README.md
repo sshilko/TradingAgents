@@ -152,6 +152,47 @@ For enterprise providers (e.g. Azure OpenAI, AWS Bedrock), copy `.env.enterprise
 
 For local models, configure Ollama with `llm_provider: "ollama"` in your config.
 
+Self-hosted and LAN endpoints (Unsloth Desktop, a local inference box) are declared in `models.json` at the repository root. Edit that file to add a provider or a model; no Python change is needed.
+
+```json
+{
+  "default_provider": "lab-box",
+  "providers": {
+    "lab-box": {
+      "label": "Lab Box (LAN)",
+      "base_url": "http://10.0.0.9:8000/v1",
+      "api_key_env": "LAB_API_KEY",
+      "open_models": true,
+      "allow_custom_model": true,
+      "models": {
+        "quick": [{ "label": "Lab 14B - fast", "id": "lab-14b" }],
+        "deep": [
+          { "label": "Lab 70B - best", "id": "lab-70b", "default": true }
+        ]
+      }
+    }
+  }
+}
+```
+
+| Field | Meaning |
+|-------|---------|
+| `default_provider` | Top-level. Provider key the CLI starts on. It must name a provider in the file. |
+| `label` | Text shown in the CLI and web pickers. Defaults to the provider key. |
+| `client` | `openai` (default), `anthropic`, `google` or `azure`. |
+| `base_url` | Endpoint URL. A `backend_url` from your config still wins. |
+| `api_key_env` | Env var holding the token, falling back to `API_KEY`. Use `null` when no token is needed. |
+| `open_models` | `true` accepts any model name and skips the known-model warning. |
+| `allow_custom_model` | `true` appends a `Custom model ID` entry to every mode. |
+| `models` | Options per mode. A mode you omit copies the mode you supply. |
+| `default` | Option field. `true` preselects that model in the picker for its mode. |
+
+An option is `["display text", "model-id"]`, or an object `{"label": ..., "id": ...}`. The object form is the one that accepts `"default": true`. The mark only preselects a row; it never reorders the list, and a mode with two marked options warns and keeps the first.
+
+Setting `default_provider` and a marked model also sets the defaults used when no provider is chosen at all, such as by the web UI or a script that reads the config. `LLM_PROVIDER` and `LLM_MODEL` in the environment still win, and a provider picked in the CLI wins over both.
+
+The loader looks for `models.json` in the repository root, then in the working directory. Set `TRADINGAGENTS_MODELS_FILE` to use another file, which is also what a non-editable `pip install` needs, because the file ships with the repository rather than the wheel. The file is re-read when it changes, so a running web server picks up edits without a restart. A missing or invalid file is not fatal: the built-in providers keep working and a warning names the problem.
+
 Alternatively, copy `.env.example` to `.env` and fill in your keys:
 ```bash
 cp .env.example .env

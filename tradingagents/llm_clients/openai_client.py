@@ -4,6 +4,7 @@ from typing import Any, Optional
 from langchain_openai import ChatOpenAI
 
 from .base_client import BaseLLMClient, normalize_content
+from .external_providers import get_external_provider
 from .validators import validate_model
 
 
@@ -60,6 +61,21 @@ _PROVIDER_CONFIG = {
 }
 
 
+def _provider_endpoint(
+    provider: str,
+) -> Optional[tuple[Optional[str], Optional[str]]]:
+    """Return (base_url, api_key_env) for a provider, or None when it has no default.
+
+    Providers from `models.json` supply their own endpoint, so a new provider
+    needs no entry in `_PROVIDER_CONFIG`.
+    """
+    external = get_external_provider(provider)
+    if external is not None and external.client == "openai":
+        return external.base_url, external.api_key_env
+
+    return _PROVIDER_CONFIG.get(provider)
+
+
 class OpenAIClient(BaseLLMClient):
     """Client for OpenAI, Ollama, OpenRouter, and xAI providers.
 
@@ -86,15 +102,16 @@ class OpenAIClient(BaseLLMClient):
 
         # Provider-specific base URL and auth
         # User-provided base_url takes precedence over provider defaults
-        if self.provider in _PROVIDER_CONFIG:
-            provider_base_url, api_key_env = _PROVIDER_CONFIG[self.provider]
-            # Only use provider default if no custom base_url was provided
-            if self.base_url:
-                llm_kwargs["base_url"] = self.base_url
-            else:
-                llm_kwargs["base_url"] = provider_base_url
+        endpoint = _provider_endpoint(self.provider)
+        if endpoint is not None:
+            provider_base_url, api_key_env = endpoint
+            base_url = self.base_url or provider_base_url
+            if base_url:
+                llm_kwargs["base_url"] = base_url
             if api_key_env:
-                api_key = os.environ.get(api_key_env)
+                # Fall back to the shared API_KEY so one .env entry can cover
+                # every self-hosted endpoint that needs a bearer token.
+                api_key = os.environ.get(api_key_env) or os.environ.get("API_KEY")
                 if api_key:
                     llm_kwargs["api_key"] = api_key
             else:

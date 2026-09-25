@@ -1,0 +1,129 @@
+{
+  "_help": {
+    "purpose": "User-defined LLM providers and their models. Edit this file to add a provider or a model. Python sources do not need to change.",
+    "read_by": "tradingagents/llm_clients/external_providers.py",
+    "override_path": "Set TRADINGAGENTS_MODELS_FILE to load a different file.",
+    "default_provider": "Provider key preselected when the CLI starts, and used as the default when LLM_PROVIDER is not set in the environment. It must name a provider in this file. Remove the key to keep the built-in default.",
+    "provider_fields": {
+      "label": "Text shown in the CLI and web pickers. Defaults to the provider key.",
+      "client": "Client implementation: openai, anthropic, google or azure. Defaults to openai.",
+      "base_url": "Endpoint URL. Falls back to config backend_url when the user sets one.",
+      "api_key_env": "Env var holding the bearer token. Falls back to API_KEY. Use null when no token is needed.",
+      "open_models": "true accepts any model name and skips the known-model warning.",
+      "allow_custom_model": "true appends a 'Custom model ID' entry to every mode.",
+      "models": "Model options per mode. A mode you omit copies the mode you supply."
+    },
+    "option_formats": [
+      [
+        "Display text",
+        "model-id"
+      ],
+      {
+        "label": "Display text",
+        "id": "model-id"
+      },
+      {
+        "label": "Display text",
+        "id": "model-id",
+        "default": "true marks the model the CLI preselects for this mode"
+      }
+    ]
+  },
+  "default_provider": "mtplx-server",
+  "providers": {
+    "unsloth-desktop": {
+      "label": "Unsloth Desktop",
+      "client": "openai",
+      "base_url": "http://127.0.0.1:8888/v1",
+      "api_key_env": "UNSLOTH_API_KEY",
+      "open_models": true,
+      "allow_custom_model": true,
+      "models": {
+        "quick": [
+          [
+            "Tiel-Coder-35B-A3B-GGUF-MTP - 35B MoE coding model (MTP)",
+            "peculiar-ragdoll/Tiel-Coder-35B-A3B-GGUF-MTP"
+          ],
+          [
+            "Qwen3.8-27B-GSQ-RCO-IQ3_XXS-Uncensored - 27B, uncensored",
+            "RentedNoodle/Qwen3.8-27B-GSQ-RCO-IQ3_XXS-Uncensored"
+          ],
+          [
+            "Qwen3.8-27B-GGUF - Unsloth reference 27B",
+            "unsloth/Qwen3.8-27B-GGUF"
+          ],
+          [
+            "KAT-Coder-V2.5-Dev-APEX-GGUF - 35B MoE coding model",
+            "mudler/KAT-Coder-V2.5-Dev-APEX-GGUF"
+          ],
+          [
+            "qwen3-4b-heretic - 4B, fastest",
+            "DreamFast/qwen3-4b-heretic"
+          ]
+        ],
+        "deep": [
+          [
+            "RentedNoodle/Qwen3.8-27B-GSQ-RCO-IQ3_XXS-Uncensored - 27B, uncensored",
+            "RentedNoodle/Qwen3.8-27B-GSQ-RCO-IQ3_XXS-Uncensored"
+          ],
+          [
+            "Tiel-Coder-35B-A3B-GGUF-MTP - 35B MoE coding model (MTP)",
+            "peculiar-ragdoll/Tiel-Coder-35B-A3B-GGUF-MTP"
+          ],
+          [
+            "KAT-Coder-V2.5-Dev-APEX-GGUF - 35B MoE coding model",
+            "mudler/KAT-Coder-V2.5-Dev-APEX-GGUF"
+          ],
+          [
+            "Ornith-1.5-35B-A3B-NVFP4-GGUF - 35B MoE, NVFP4",
+            "TizzyT566/Ornith-1.5-35B-A3B-NVFP4-GGUF"
+          ],
+          [
+            "Qwen3.8-27B-GSQ-RCO-IQ3_S-MTP-Q4XS-Q3S - 27B with MTP",
+            "Qwen3.8-27B-GSQ-RCO-IQ3_S-MTP-Q4XS-Q3S"
+          ],
+          [
+            "Qwen3.8-27B-GSQ-RCO-GGUF - 27B, ISTA-DASLab",
+            "ISTA-DASLab/Qwen3.8-27B-GSQ-RCO-GGUF"
+          ],
+          [
+            "Qwen3.8-27B-NVFP4-BUDGET-GGUF - 27B, NVFP4 budget",
+            "esatapedico/Qwen3.8-27B-NVFP4-BUDGET-GGUF"
+          ],
+          [
+            "Qwen3.8-27B-GGUF - Unsloth reference 27B",
+            "unsloth/Qwen3.8-27B-GGUF"
+          ],
+          [
+            "Swift-Qwen3.8-27B-GGUF - 27B, SWFT-tuned",
+            "ukisai/Swift-Qwen3.8-27B-GGUF"
+          ]
+        ]
+      }
+    },
+    "mtplx-server": {
+      "label": "MTPLX Server (LAN)",
+      "client": "openai",
+      "base_url": "http://192.168.178.79:8000/v1",
+      "api_key_env": "MTPLX_API_KEY",
+      "open_models": true,
+      "allow_custom_model": true,
+      "models": {
+        "quick": [
+          {
+            "label": "MTPLX Qwen3.6 35B-A3B - optimized balance",
+            "id": "mtplx-qwen36-35b-a3b-optimized-balance",
+            "default": true
+          }
+        ],
+        "deep": [
+          {
+            "label": "MTPLX Qwen3.6 35B-A3B - optimized balance",
+            "id": "mtplx-qwen36-35b-a3b-optimized-balance",
+            "default": true
+          }
+        ]
+      }
+    }
+  }
+}

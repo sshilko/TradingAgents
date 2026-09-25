@@ -3,6 +3,7 @@
 import os
 from typing import Dict, Any, List, Optional
 from tradingagents.default_config import DEFAULT_CONFIG
+from tradingagents.llm_clients.model_catalog import get_provider_options
 
 
 # Fields to exclude from safe config (contain secrets)
@@ -24,19 +25,16 @@ SECRET_FIELDS = {
 
 def get_safe_config() -> Dict[str, Any]:
     """Return a sanitized version of DEFAULT_CONFIG (no secrets)."""
-    return {
-        k: v for k, v in DEFAULT_CONFIG.items()
-        if k not in SECRET_FIELDS
-    }
+    return {k: v for k, v in DEFAULT_CONFIG.items() if k not in SECRET_FIELDS}
 
 
 def apply_web_config(user_config: Dict[str, Any]) -> Dict[str, Any]:
     """Apply user-provided config values to DEFAULT_CONFIG.
-    
+
     Merges user values with defaults, preserving secrets from environment.
     """
     config = DEFAULT_CONFIG.copy()
-    
+
     # Apply user values
     for key, value in user_config.items():
         if key in SECRET_FIELDS:
@@ -44,20 +42,36 @@ def apply_web_config(user_config: Dict[str, Any]) -> Dict[str, Any]:
             config[key] = os.getenv(key, value)
         elif key in config:
             config[key] = value
-    
+
     return config
 
 
 # Default analyst options
 ANALYST_OPTIONS = [
-    {"value": "market", "label": "Market Analyst", "description": "Stock price and volume analysis"},
-    {"value": "social", "label": "Social Media Analyst", "description": "Social media sentiment analysis"},
-    {"value": "news", "label": "News Analyst", "description": "News and insider transactions analysis"},
-    {"value": "fundamentals", "label": "Fundamentals Analyst", "description": "Financial fundamentals analysis"},
+    {
+        "value": "market",
+        "label": "Market Analyst",
+        "description": "Stock price and volume analysis",
+    },
+    {
+        "value": "social",
+        "label": "Social Media Analyst",
+        "description": "Social media sentiment analysis",
+    },
+    {
+        "value": "news",
+        "label": "News Analyst",
+        "description": "News and insider transactions analysis",
+    },
+    {
+        "value": "fundamentals",
+        "label": "Fundamentals Analyst",
+        "description": "Financial fundamentals analysis",
+    },
 ]
 
 # LLM provider options
-LLM_PROVIDER_OPTIONS = [
+_BUILTIN_LLM_PROVIDER_OPTIONS = [
     {"value": "openai", "label": "OpenAI"},
     {"value": "anthropic", "label": "Anthropic"},
     {"value": "google", "label": "Google"},
@@ -69,6 +83,19 @@ LLM_PROVIDER_OPTIONS = [
     {"value": "azure", "label": "Azure OpenAI"},
     {"value": "ollama", "label": "Ollama (Local)"},
 ]
+
+
+def get_llm_provider_options() -> List[Dict[str, str]]:
+    """Return provider options, including every provider declared in models.json.
+
+    The external file is re-read on every call, so a running server shows new
+    providers without a restart.
+    """
+    return _BUILTIN_LLM_PROVIDER_OPTIONS + [
+        {"value": provider_key, "label": label}
+        for provider_key, (label, _base_url) in get_provider_options().items()
+    ]
+
 
 # Server settings
 SERVER_HOST = os.getenv("WEB_HOST", "0.0.0.0")
